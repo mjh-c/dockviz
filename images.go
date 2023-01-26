@@ -414,24 +414,25 @@ func PrintTreeNode(buffer *bytes.Buffer, image Image, dispOpts DisplayOpts, pref
 		imageID = truncate(stripPrefix(image.OrigId), 12)
 	}
 
-	var size int64
-	var sizeLabel string
-	if dispOpts.Incremental {
-		sizeLabel = "Size"
-		size = image.Size
-	} else {
-		sizeLabel = "Virtual Size"
-		size = image.VirtualSize
-	}
 
-	var sizeStr string
+	var vsizeStr string
 	if dispOpts.NoHuman {
-		sizeStr = strconv.FormatInt(size, 10)
+		vsizeStr = strconv.FormatInt(image.VirtualSize, 10)
 	} else {
-		sizeStr = humanSize(size)
+		vsizeStr = humanSize(image.VirtualSize)
 	}
 
-	buffer.WriteString(fmt.Sprintf("%s%s %s: %s", prefix, imageID, sizeLabel, sizeStr))
+	if dispOpts.Incremental {
+		var sizeStr string
+		if dispOpts.NoHuman {
+			sizeStr = strconv.FormatInt(image.Size, 10)
+		} else {
+			sizeStr = humanSize(image.Size)
+		}
+		buffer.WriteString(fmt.Sprintf("%s%s Size: %s Cumulated: %s", prefix, imageID, sizeStr, vsizeStr))
+	} else {
+		buffer.WriteString(fmt.Sprintf("%s%s Size: %s", prefix, imageID, vsizeStr))
+	}
 	if image.RepoTags[0] != "<none>:<none>" {
 		buffer.WriteString(fmt.Sprintf(" Tags: %s", strings.Join(image.RepoTags, ", ")))
 	}
@@ -510,23 +511,23 @@ func imagesToDot(buffer *bytes.Buffer, images []Image, byParent map[string][]Ima
 				labelParts = append(labelParts, SanitizeCommand(image.CreatedBy, 30))
 			}
 
-			var size int64
-			var sizeLabel string
-			if dispOpts.Incremental {
-				sizeLabel = "Size"
-				size = image.Size
+			var vsizeStr string
+			if dispOpts.NoHuman {
+				vsizeStr = strconv.FormatInt(image.VirtualSize, 10)
 			} else {
-				sizeLabel = "Virtual Size"
-				size = image.VirtualSize
+				vsizeStr = humanSize(image.VirtualSize)
 			}
 
-			var sizeStr string
-			if dispOpts.NoHuman {
-				sizeStr = strconv.FormatInt(size, 10)
-			} else {
-				sizeStr = humanSize(size)
+			if dispOpts.Incremental {
+				var sizeStr string
+				if dispOpts.NoHuman {
+					sizeStr = strconv.FormatInt(image.Size, 10)
+				} else {
+					sizeStr = humanSize(image.Size)
+				}
+				labelParts = append(labelParts, fmt.Sprintf("Size: %s", sizeStr))
 			}
-			labelParts = append(labelParts, fmt.Sprintf("%s: %s", sizeLabel, sizeStr))
+			labelParts = append(labelParts, fmt.Sprintf("Cumulated: %s", vsizeStr))
 
 			buffer.WriteString(fmt.Sprintf(" \"%s\" [label=\"%s\",area=%f]\n", truncate(image.Id, 12), strings.Join(labelParts, "\n"), megabytes(image.Size)))
 		}
