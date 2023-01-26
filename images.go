@@ -154,6 +154,7 @@ func (x *ImagesCommand) Execute(args []string) error {
 		imagesByParent := collectChildren(images)
 
 		// filter images
+		*images, imagesByParent = filterSize0(images, &imagesByParent)
 		if imagesCommand.OnlyLabelled {
 			*images, imagesByParent = filterImages(images, &imagesByParent)
 		}
@@ -317,6 +318,36 @@ func collectRoots(images *[]Image) []Image {
 	}
 
 	return roots
+}
+
+func filterSize0(images *[]Image, byParent *map[string][]Image) (filteredImages []Image, filteredChildren map[string][]Image) {
+	for i := 0; i < len(*images); i++ {
+		// image is visible
+		//   1. it has a label
+		//   2. it is root
+		//   3. it is a node
+		var visible bool = (*images)[i].RepoTags[0] != "<none>:<none>" || (*images)[i].Size > 0
+		if visible {
+			filteredImages = append(filteredImages, (*images)[i])
+		} else {
+			// change childs parent id
+			// if items are filtered with only one child
+			for j := 0; j < len(filteredImages); j++ {
+				if filteredImages[j].ParentId == (*images)[i].Id {
+					filteredImages[j].ParentId = (*images)[i].ParentId
+				}
+			}
+			for j := 0; j < len(*images); j++ {
+				if (*images)[j].ParentId == (*images)[i].Id {
+					(*images)[j].ParentId = (*images)[i].ParentId
+				}
+			}
+		}
+	}
+
+	filteredChildren = collectChildren(&filteredImages)
+
+	return filteredImages, filteredChildren
 }
 
 func filterImages(images *[]Image, byParent *map[string][]Image) (filteredImages []Image, filteredChildren map[string][]Image) {
